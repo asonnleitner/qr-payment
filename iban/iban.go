@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/asonnleitner/qr-payment/utils"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -35,25 +36,41 @@ func ParseAccount(account, country string) string {
 }
 
 func convertToIBAN(country, prefix, number, bankCode string) string {
-	var bban string
+	var sb strings.Builder
 
-	if country == "CZ" {
-		bban = bankCode + prefix + number
-	} else {
+	switch country {
+	case "CZ":
+		sb.WriteString(bankCode)
+		sb.WriteString(prefix)
+		sb.WriteString(number)
+	default:
 		panic(errCountryCodeNotSupported)
 	}
 
+	bban := sb.String()
+
 	checksum := calculateChecksum(country, bban)
 
-	return fmt.Sprintf("%s%s%s", country, checksum, bban)
+	sb.Reset()
+	sb.WriteString(country)
+	sb.WriteString(checksum)
+	sb.WriteString(bban)
+
+	return sb.String()
 }
 
 func calculateChecksum(country, bban string) string {
-	bban = bban + country + "00"
+	var sb strings.Builder
 
-	return fmt.Sprintf("%02d", 98-utils.Modulo(
-		replaceLetters(bban), 97,
-	))
+	sb.WriteString(bban)
+	sb.WriteString(country)
+	sb.WriteString("00")
+
+	checksum := 98 - utils.Modulo(
+		replaceLetters(sb.String()), 97,
+	)
+
+	return strconv.FormatInt(checksum, 10)
 }
 
 func splitAccount(account string, pattern *regexp.Regexp) (prefix, number, bankCode string) {

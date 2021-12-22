@@ -19,12 +19,12 @@ func Padding(input string, length int, char string, direction string) string {
 	}
 }
 
-func Modulo(dividend string, divisor int) int {
+func Modulo(dividend string, divisor int) int64 {
 	var remainder int
 
 	for i := 0; i < len(dividend); i++ {
 		remainder = (remainder*10 + int(dividend[i]-'0')) % divisor
 	}
 
-	return remainder
+	return int64(remainder)
 }
