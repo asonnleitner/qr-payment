@@ -2,8 +2,10 @@ package utils
 
 import "strings"
 
-const PaddingLeft = "left"
-const PaddingRight = "right"
+const (
+	PaddingLeft  = "left"
+	PaddingRight = "right"
+)
 
 func Padding(input string, length int, char string, direction string) string {
 	if len(input) >= length {
