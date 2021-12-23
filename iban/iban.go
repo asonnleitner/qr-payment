@@ -2,6 +2,7 @@ package iban
 
 import (
 	"fmt"
+	"github.com/asonnleitner/qr-payment/strutils"
 	"github.com/asonnleitner/qr-payment/utils"
 	"regexp"
 	"strconv"
@@ -9,23 +10,23 @@ import (
 )
 
 const (
-	errInvalidAccountNumber    = "Invalid account number"
-	errCountryCodeNotSupported = "Country code not supported"
+	errInvalidAccountNumber    = "invalid account number"
+	errCountryCodeNotSupported = "country code not supported"
 )
 
 var (
-	czechBankAccountPattern = regexp.MustCompile(`^([0-9]{2,6}-)?([0-9]{2,10}/)([0-9]{4})$`)
-	lettersPattern          = regexp.MustCompile(`[A-Z]`)
+	czBankAccRegExp = regexp.MustCompile(`^([0-9]{2,6})-([0-9]{2,10})/([0-9]{4})$|^([0-9]{2,10})/([0-9]{4})$`)
+	lettersPattern  = regexp.MustCompile(`[A-Z]`)
 )
 
-func ParseAccount(account, country string) string {
+func ParseAccount(account, country string) (string, error) {
 	var pattern *regexp.Regexp
 	country = strings.ToUpper(country)
 	account = strings.Replace(account, " ", "", -1)
 
 	switch country {
 	case "CZ":
-		pattern = czechBankAccountPattern
+		pattern = czBankAccRegExp
 	default:
 		panic(errCountryCodeNotSupported)
 	}
@@ -35,28 +36,19 @@ func ParseAccount(account, country string) string {
 	return convertToIBAN(country, prefix, number, bankCode)
 }
 
-func convertToIBAN(country, prefix, number, bankCode string) string {
-	var sb strings.Builder
+func convertToIBAN(country, prefix, number, bankCode string) (string, error) {
+	var bban string
 
 	switch country {
 	case "CZ":
-		sb.WriteString(bankCode)
-		sb.WriteString(prefix)
-		sb.WriteString(number)
+		bban = strutils.Concat(4+6+10, bankCode, prefix, number)
 	default:
-		panic(errCountryCodeNotSupported)
+		return "", fmt.Errorf(errCountryCodeNotSupported)
 	}
-
-	bban := sb.String()
 
 	checksum := calculateChecksum(country, bban)
 
-	sb.Reset()
-	sb.WriteString(country)
-	sb.WriteString(checksum)
-	sb.WriteString(bban)
-
-	return sb.String()
+	return strutils.Concat(2+2+10, country, checksum, bban), nil
 }
 
 func calculateChecksum(country, bban string) string {
@@ -84,15 +76,15 @@ func splitAccount(account string, pattern *regexp.Regexp) (prefix, number, bankC
 		panic(errInvalidAccountNumber)
 	}
 
-	parts := pattern.FindStringSubmatch(account)
+	parts := pattern.FindStringSubmatch(account)[1:]
 
 	prefix = utils.Padding(
-		strings.Replace(parts[1], "-", "", -1), 6, "0", utils.PaddingLeft,
+		strings.Replace(parts[0], "-", "", -1), 6, "0", utils.PaddingLeft,
 	)
 	number = utils.Padding(
-		strings.Replace(parts[2], "/", "", -1), 10, "0", utils.PaddingLeft,
+		strings.Replace(parts[1], "/", "", -1), 10, "0", utils.PaddingLeft,
 	)
-	bankCode = parts[3]
+	bankCode = parts[2]
 	return
 }
 
